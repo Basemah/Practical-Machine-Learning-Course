@@ -1,0 +1,205 @@
+---
+Title: Course Project
+Author: Basemah Alshemali
+Date: 12/12/2020
+Coursera course: Practical Machine Learning
+Goal of this project: to use data from accelerometers on the belt, forearm, arm, and
+  dumbel to determine how well a participant was performing barbell lifts. To provide
+  input information, six participants were asked to perform barbell lifts correctly
+  and incorrectly in 5 different ways.
+More information is available from the website here: http://groupware.les.inf.puc-rio.br/har
+  (see the section on the Weight Lifting Exercise Dataset).
+output: pdf_document
+---
+
+
+# Plan
+
+At first, we learn about the data and find out which data can be useful for prediction and which data cleaning must be done to make the data usable.
+
+The plan is as follows:
+1- Explore the data and apply necessary data cleaning.
+2- Train three algorithms and evaluate their performance on the validation data set.
+3- Select the best performing one based on the accuracy.
+4- Run the prediction on the testing data set.
+
+
+
+# Required libraries
+To run this project, the following libraries are required.
+
+```{r}
+library(readr)
+library(dplyr)
+library(caret)
+library(rpart)
+library(rpart.plot)
+library(RColorBrewer)
+library(corrplot)
+library(rattle)
+```
+
+# Loading data
+We load the training and testing data to "training" and "testing" streams.
+
+```{r, warning=FALSE}
+training <- read_csv("pml-training.csv")
+testing <- read_csv("pml-testing.csv")
+```
+
+# Exploring data
+
+# Exploring the dimensions of data
+
+```{r}
+dim(training)
+dim(testing)
+```
+
+We can see that both training and testing files have 160 columns. The training set has 19622 rows, while the testing set has 20 rows.
+
+
+# Returning the first part of the data
+
+```{r}
+head(training)
+```
+The training set contains a number of columns with a large number of missing (NA) values. 
+We will remove columns with over 90% NA’s from both the training and testing sets as they don't add any value for model prediction. 
+In addition, the first seven columns will be removed since they are either ID variables or date/time stamp related.
+
+
+# Cleaning data
+
+```{r}
+training <- training[,-c(1:7)]
+testing <- testing[,-c(1:7)]
+
+varsNA <- sapply(training, function(x) mean(is.na(x))) > 0.9
+training <- training[,varsNA==FALSE]
+testing  <- testing[,varsNA==FALSE]
+```
+
+
+```{r}
+dim(training)
+dim(testing)
+```
+As we can see, we have left with 53 columns after the cleaning.
+
+
+# Spliting the training set into a sub-training (70%) and testing(30%) set
+
+```{r}
+set.seed(1)
+inTrain <- createDataPartition(y=training$classe, p=0.7, list=FALSE)
+training_sub <- training[inTrain,]
+testing_sub <- training[-inTrain,]
+```
+
+# Building models
+
+We will use 3 methods and choose the one having the best accuracy to predict the outcome variable in the testing set. A confusion matrix plotted at the end of each model will help visualize the analysis better. The following methods will be evaluated:
+1. Ssupport vector machine (SVM)
+2. Gradient Boosted Machines (GBM)
+3. Random Forests (RF)
+
+
+# Support vector machine (SVM)
+
+# Training model
+
+```{r}
+set.seed(1)
+modFit1<-train(classe~.,method="svmRadial",data=training_sub)
+```
+
+# Estimating the performance of the SVM on the validation data set.
+
+```{r}
+predictSVM <- predict(modFit1, testing_sub)
+```
+
+# Confusion matrix
+
+```{r}
+confusionMatrix(table(testing_sub$classe, predictSVM))
+```
+
+
+## Visualization
+
+```{r}
+plot(predictSVM, main="SVM Prediction", ylab="Samples", xlab="Classes")
+```
+
+
+# Gradient Boosted Machines (GBM)
+
+# Training model
+```{r}
+modFit2<-train(classe~.,method="gbm",data=training_sub)
+```
+
+# Estimating the performance of the GBM on the validation data set.
+
+```{r}
+predictGBM <- predict(modFit2, testing_sub)
+```
+
+# Confusion matrix
+
+```{r}
+confusionMatrix( table(testing_sub$classe, predictGBM))
+```
+
+# Visualization
+
+```{r}
+plot(predictGBM, main="GBM Prediction", ylab="Samples", xlab="Classes")
+```
+
+
+# Random Forests (RF)
+
+# Training model
+
+```{r}
+modFit3<-train(classe~.,method="rf",data=training_sub)
+```
+
+# Estimating the performance of the RF on the validation data set.
+
+```{r}
+predictRF <- predict(modFit3, testing_sub)
+```
+
+# Confusion matrix
+
+```{r}
+confusionMatrix( table(testing_sub$classe, predictRF ) )
+```
+
+## Visualization
+
+```{r}
+plot(predictRF, main="RF Prediction", ylab="Samples", xlab="Classes")
+```
+
+
+# Predicting for testing set
+
+The Random Forests has the best accuracy of 99.13%, therefore, this model will be used on the testing data.
+
+```{r}
+pred <- predict(modFit3, testing)
+```
+
+# Prediction of the 20 cases
+
+```{r}
+pred
+```
+
+
+
